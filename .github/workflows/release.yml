@@ -1,0 +1,60 @@
+# Creates GitHub Releases with tarball on version tags.
+# This enables: mise use -g github:epoch-chrono/claude-project-init
+#
+# mise github backend expects a release asset with bin/ in the archive.
+# Our structure (bin/ + lib/) is already compatible.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate version matches source
+        run: |
+          src_version=$(python3 -c "
+          import re
+          with open('lib/cpi_engine.py') as f:
+              for line in f:
+                  m = re.match(r'VERSION\s*=\s*\"(.+?)\"', line)
+                  if m:
+                      print(m.group(1))
+                      break
+          ")
+          tag_version="${{ steps.version.outputs.version }}"
+          if [ "$src_version" != "$tag_version" ]; then
+            echo "ERROR: Tag v${tag_version} doesn't match source VERSION=${src_version}"
+            exit 1
+          fi
+
+      - name: Create release tarball
+        run: |
+          prefix="claude-project-init-${{ steps.version.outputs.version }}"
+          mkdir -p "${prefix}/bin" "${prefix}/lib"
+          cp bin/claude-project-init "${prefix}/bin/"
+          cp lib/cpi_engine.py "${prefix}/lib/"
+          cp README.md LICENSE CHANGELOG.md "${prefix}/"
+          tar czf "${prefix}.tar.gz" "${prefix}/"
+          sha256sum "${prefix}.tar.gz" > "${prefix}.tar.gz.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            claude-project-init-${{ steps.version.outputs.version }}.tar.gz
+            claude-project-init-${{ steps.version.outputs.version }}.tar.gz.sha256

@@ -1,0 +1,17 @@
+# Dev tools for this project (optional)
+# Run: mise install
+
+[tools]
+python = "3"
+
+[tasks.test]
+description = "Run smoke tests"
+run = "make test"
+
+[tasks.lint]
+description = "Syntax check"
+run = "make lint"
+
+[tasks.release]
+description = "Create release tag"
+run = "make release V={{arg(name='version')}}"

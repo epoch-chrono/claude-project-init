@@ -1,0 +1,427 @@
+#!/usr/bin/env fish
+# File: claude-project-init
+# Version: v1.1.0
+# Created: 2025-02-07 19:30
+# Last Updated: 2025-02-07 20:00
+# Purpose: CLI to scaffold Claude Projects with optimized structure
+# Repository: https://github.com/epoch-chrono/claude-project-init
+# License: MIT
+
+# ─── Resolve engine path (works from symlink, mise, or direct) ────────────────
+set -g CPI_SCRIPT_DIR (status dirname)
+set -g CPI_ENGINE "$CPI_SCRIPT_DIR/../lib/cpi_engine.py"
+
+if not test -f "$CPI_ENGINE"
+    # Try relative to realpath (for symlinks)
+    set -l real_dir (realpath "$CPI_SCRIPT_DIR" 2>/dev/null; or echo "$CPI_SCRIPT_DIR")
+    set CPI_ENGINE "$real_dir/../lib/cpi_engine.py"
+end
+
+if not test -f "$CPI_ENGINE"
+    echo "Error: cpi_engine.py not found. Expected at: $CPI_ENGINE" >&2
+    exit 1
+end
+
+function _engine
+    python3 "$CPI_ENGINE" $argv
+end
+
+# ─── Config ───────────────────────────────────────────────────────────────────
+set -g CPI_VERSION (_engine version)
+set -g CPI_CONFIG_DIR "$HOME/.config/claude-project-init"
+set -g CPI_REGISTRY "$CPI_CONFIG_DIR/registry.json"
+
+# ─── Colors ───────────────────────────────────────────────────────────────────
+set -g C_R (set_color normal)
+set -g C_B (set_color --bold)
+set -g C_G (set_color green)
+set -g C_Y (set_color yellow)
+set -g C_RED (set_color red)
+set -g C_C (set_color cyan)
+set -g C_D (set_color brblack)
+
+function _log_step; echo "$C_C→$C_R $argv"; end
+function _log_warn; echo "$C_Y⚠$C_R $argv"; end
+function _log_error; echo "$C_RED✖$C_R $argv" >&2; end
+function _log_ok; echo "$C_G✔$C_R $argv"; end
+
+function _sanitize_dirname; string replace -a '/' '-' -- $argv[1]; end
+
+function _extract_tag
+    set -l parts (string split '/' -- $argv[1])
+    echo $parts[-1]
+end
+
+function _has_glow; command -q glow; end
+
+# ─── Registry wrappers ────────────────────────────────────────────────────────
+
+function _registry_list
+    set -l output (_engine registry_list)
+    if test "$output" = "__EMPTY__"
+        _log_warn "Nenhum projeto registrado ainda."
+        echo "Use --import para importar projetos existentes."
+        return 1
+    end
+    echo ""
+    echo "$C_B  PROJETOS REGISTRADOS$C_R"
+    echo "$C_D  ────────────────────────────────────────$C_R"
+    for line in $output
+        if string match -q '__COUNT__*' "$line"
+            set -l count (string replace '__COUNT__' '' "$line")
+            echo "$C_D  ────────────────────────────────────────$C_R"
+            echo "$C_D  Total: $count projeto(s)$C_R"
+        else
+            echo "$line"
+        end
+    end
+    echo ""
+end
+
+function _registry_get_tags
+    _engine registry_get_tags
+end
+
+# ─── Create Project ──────────────────────────────────────────────────────────
+
+function _create_project -a name tag role stack output_dir dry_run
+    set -l dirname (_sanitize_dirname $name)
+    set -l project_dir "$output_dir/$dirname"
+
+    if test "$dry_run" = "true"
+        echo ""
+        echo "$C_B  DRY RUN — Nenhum arquivo será criado$C_R"
+        echo ""
+        echo "  Projeto:    $name"
+        echo "  Tag:        ($tag)"
+        echo "  Role:       $role"
+        echo "  Stack:      $stack"
+        echo "  Diretório:  $project_dir/"
+        echo ""
+        echo "  Arquivos que seriam criados:"
+        for f in README.md DESCRICAO.txt INSTRUCOES.md metaprompt-resumo.md metaprompt-retomar.md metaprompt-iniciar.md
+            echo "    $project_dir/$f"
+        end
+        echo ""
+        echo "  Registry: $name → ($tag) seria adicionado"
+        return 0
+    end
+
+    if test -d "$project_dir"
+        _log_error "Diretório já existe: $project_dir"
+        _log_error "Remova ou use --output para outro local."
+        return 1
+    end
+
+    _log_step "Criando $project_dir/"
+    mkdir -p "$project_dir"
+
+    _log_step "Gerando DESCRICAO.txt"
+    _engine generate "$project_dir/DESCRICAO.txt" description "$name" "$tag" "$role" "$stack"
+
+    _log_step "Gerando INSTRUCOES.md"
+    _engine generate "$project_dir/INSTRUCOES.md" instructions "$name" "$tag" "$role" "$stack"
+
+    _log_step "Gerando metaprompt-resumo.md"
+    _engine generate "$project_dir/metaprompt-resumo.md" metaprompt_resumo "$name" "$tag"
+
+    _log_step "Gerando metaprompt-retomar.md"
+    _engine generate "$project_dir/metaprompt-retomar.md" metaprompt_retomar "$name" "$tag"
+
+    _log_step "Gerando metaprompt-iniciar.md"
+    _engine generate "$project_dir/metaprompt-iniciar.md" metaprompt_iniciar "$name" "$tag"
+
+    _log_step "Gerando README.md"
+    _engine generate "$project_dir/README.md" readme "$name" "$tag"
+
+    _log_step "Registrando no registry"
+    _engine registry_add "$name" "$tag"
+
+    _log_ok "Projeto criado com sucesso!"
+    echo ""
+
+    # Auto-render README
+    if _has_glow
+        _log_step "Instruções de setup:"
+        echo ""
+        glow "$project_dir/README.md"
+    else
+        echo "$C_B  PRÓXIMOS PASSOS NA UI (claude.ai):$C_R"
+        echo ""
+        echo "  1. Criar projeto: Projects → New Project → Nome: \"$name\""
+        echo "  2. Descrição: copiar de $C_C$project_dir/DESCRICAO.txt$C_R"
+        echo "  3. Instruções: copiar de $C_C$project_dir/INSTRUCOES.md$C_R"
+        echo "     $C_Y⚠ Edite a seção CONTEXTO$C_R"
+        echo "  4. Arquivos: arrastar para Project Knowledge:"
+        echo "     $C_C$project_dir/metaprompt-resumo.md$C_R"
+        echo "     $C_C$project_dir/metaprompt-retomar.md$C_R"
+        echo "     $C_C$project_dir/metaprompt-iniciar.md$C_R"
+        echo "  5. Primeira conversa: digitar" $C_B"[INICIAR]"$C_R
+        echo ""
+        echo "$C_D  Dica: instale glow para visualização rica do README$C_R"
+        echo "$C_D  https://github.com/charmbracelet/glow$C_R"
+        echo ""
+    end
+end
+
+# ─── Import ───────────────────────────────────────────────────────────────────
+
+function _do_import
+    echo ""
+    echo "$C_B  IMPORTAR PROJETO EXISTENTE$C_R"
+    echo "$C_D  Registra projeto(s) que já existem no Claude na registry local.$C_R"
+    echo ""
+
+    if test (count $argv) -ge 2
+        # Non-interactive
+        set -l name $argv[1]
+        set -l tag $argv[2]
+        _engine registry_add "$name" "$tag"
+        _log_ok "Importado: $name → ($tag)"
+        return 0
+    end
+
+    # Interactive: import multiple
+    echo "  Informe projetos existentes no Claude."
+    echo "  Formato: Categoria/Nome (ex: Home/BenjiBot)"
+    echo "  Linha vazia ou 'q' para finalizar."
+    echo ""
+
+    set -l count 0
+    while true
+        read -P "$C_C  Projeto$C_R: " name
+        if test -z "$name" -o "$name" = "q" -o "$name" = "Q"
+            break
+        end
+
+        set -l suggested (_extract_tag $name)
+        read -P "$C_C  Tag$C_R [$suggested]: " custom_tag
+        set -l tag (test -n "$custom_tag" && echo $custom_tag || echo $suggested)
+
+        _engine registry_add "$name" "$tag"
+        _log_ok "  $name → ($tag)"
+        set count (math $count + 1)
+        echo ""
+    end
+
+    echo ""
+    if test $count -gt 0
+        _log_ok "Importados $count projeto(s)."
+    else
+        _log_warn "Nenhum projeto importado."
+    end
+end
+
+# ─── Migrate ──────────────────────────────────────────────────────────────────
+
+function _do_migrate -a name output_dir
+    set -l tag (_extract_tag $name)
+    set -l dirname (_sanitize_dirname $name)
+    set -l project_dir "$output_dir/$dirname"
+
+    echo ""
+    echo "$C_B  MIGRAÇÃO PARA BEST PRACTICES$C_R"
+    echo "  Projeto: $name | Tag: ($tag)"
+    echo ""
+
+    if test -d "$project_dir"
+        _log_error "Diretório já existe: $project_dir"
+        return 1
+    end
+
+    mkdir -p "$project_dir"
+
+    _log_step "Gerando metaprompts"
+    _engine generate "$project_dir/metaprompt-resumo.md" metaprompt_resumo "$name" "$tag"
+    _engine generate "$project_dir/metaprompt-retomar.md" metaprompt_retomar "$name" "$tag"
+    _engine generate "$project_dir/metaprompt-iniciar.md" metaprompt_iniciar "$name" "$tag"
+
+    _log_step "Gerando template de instruções"
+    _engine generate "$project_dir/INSTRUCOES.md" instructions "$name" "$tag" "[TODO: definir role]" "[TODO: definir stack]"
+
+    _log_step "Gerando checklist de migração"
+    _engine generate "$project_dir/MIGRACAO-CHECKLIST.md" migration "$name" "$tag"
+
+    _engine registry_add "$name" "$tag"
+
+    _log_ok "Arquivos de migração gerados!"
+    echo ""
+
+    if _has_glow
+        glow "$project_dir/MIGRACAO-CHECKLIST.md"
+    else
+        echo "  1. Leia $C_C$project_dir/MIGRACAO-CHECKLIST.md$C_R"
+        echo "  2. Edite $C_C$project_dir/INSTRUCOES.md$C_R com contexto real"
+        echo "  3. Siga o checklist"
+        echo ""
+    end
+end
+
+# ─── Interactive ──────────────────────────────────────────────────────────────
+
+function _interactive
+    echo ""
+    echo "$C_B  ╔══════════════════════════════════════╗$C_R"
+    echo "$C_B  ║   claude-project-init v$CPI_VERSION        ║$C_R"
+    echo "$C_B  ╚══════════════════════════════════════╝$C_R"
+    echo ""
+
+    set -l existing_tags (_registry_get_tags)
+    if test -n "$existing_tags"
+        echo "$C_D  Projetos registrados:$C_R"
+        for line in $existing_tags
+            echo "$C_D    $line$C_R"
+        end
+        echo ""
+    end
+
+    read -P "$C_C  Nome do projeto$C_R (ex: Home/RaspberryPi): " project_name
+    test -z "$project_name"; and _log_error "Nome vazio."; and return 1
+
+    set -l suggested (_extract_tag $project_name)
+    read -P "$C_C  Tag$C_R [$suggested]: " custom_tag
+    set -l tag (test -n "$custom_tag" && echo $custom_tag || echo $suggested)
+
+    read -P "$C_C  Papel do Claude$C_R (ex: senior backend engineer): " role
+    test -z "$role"; and set role "senior software engineer"
+
+    read -P "$C_C  Stack/tecnologias$C_R (ex: Python, Docker, AWS): " stack
+    test -z "$stack"; and set stack "[definir stack]"
+
+    read -P "$C_C  Diretório de saída$C_R [.]: " output_dir
+    test -z "$output_dir"; and set output_dir "."
+
+    echo ""
+    echo "$C_B  Resumo:$C_R"
+    echo "    Nome:   $project_name"
+    echo "    Tag:    ($tag)"
+    echo "    Role:   $role"
+    echo "    Stack:  $stack"
+    echo "    Output: $output_dir/"
+    echo ""
+    read -P "  Confirma? [Y/n]: " confirm
+    test "$confirm" = "n" -o "$confirm" = "N"; and _log_warn "Cancelado."; and return 1
+
+    _create_project "$project_name" "$tag" "$role" "$stack" "$output_dir" false
+end
+
+# ─── Help ─────────────────────────────────────────────────────────────────────
+
+function _help
+    echo ""
+    echo "$C_B  claude-project-init$C_R v$CPI_VERSION"
+    echo "  Scaffold de projetos Claude com estrutura otimizada."
+    echo ""
+    echo "$C_B  USO:$C_R"
+    echo "    claude-project-init                           # interativo"
+    echo '    claude-project-init "Home/RaspberryPi"        # não-interativo'
+    echo '    claude-project-init "Home/RaspberryPi" \\'
+    echo '      --role "embedded engineer" --stack "Python, Ansible"'
+    echo ""
+    echo "$C_B  OPÇÕES:$C_R"
+    echo "    --role <role>       Papel do Claude no projeto"
+    echo "    --stack <stack>     Stack do projeto"
+    echo "    --output <dir>      Diretório de saída (default: .)"
+    echo "    --tag <tag>         Tag customizada"
+    echo "    --dry-run           Preview sem criar arquivos"
+    echo ""
+    echo "$C_B  GESTÃO DE PROJETOS:$C_R"
+    echo "    --import            Registrar projeto(s) existente(s) na registry"
+    echo '    --migrate <nome>    Gerar arquivos p/ migrar projeto p/ best practices'
+    echo "    --list              Listar projetos registrados"
+    echo ""
+    echo "$C_B  EXEMPLOS:$C_R"
+    echo '    claude-project-init "Apoiase/Monitoring"'
+    echo "    claude-project-init --import                  # interativo, múltiplos"
+    echo '    claude-project-init --import "Home/Bot" --tag "Bot"'
+    echo '    claude-project-init --migrate "Home/Bot"'
+    echo '    claude-project-init --dry-run "Home/Test"'
+    echo ""
+    echo "$C_B  INSTALL:$C_R  mise use -g github:epoch-chrono/claude-project-init"
+    echo "$C_B  REGISTRY:$C_R $CPI_REGISTRY"
+    echo "$C_B  REPO:$C_R     https://github.com/epoch-chrono/claude-project-init"
+    echo ""
+    if not _has_glow
+        echo "$C_D  Dica: instale glow para visualização rica do README$C_R"
+        echo "$C_D  https://github.com/charmbracelet/glow$C_R"
+        echo ""
+    end
+end
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
+
+function main
+    set -l project_name ""
+    set -l role "senior software engineer"
+    set -l stack "[definir stack]"
+    set -l output_dir "."
+    set -l custom_tag ""
+    set -l dry_run false
+    set -l do_import false
+    set -l do_migrate false
+
+    set -l i 1
+    while test $i -le (count $argv)
+        switch $argv[$i]
+            case --help -h
+                _help; return 0
+            case --version -v
+                echo "claude-project-init v$CPI_VERSION"; return 0
+            case --list-projects --list
+                _registry_list; return $status
+            case --dry-run
+                set dry_run true
+            case --import
+                set do_import true
+            case --migrate --from-existing
+                set do_migrate true
+            case --role
+                set i (math $i + 1); set role "$argv[$i]"
+            case --stack
+                set i (math $i + 1); set stack "$argv[$i]"
+            case --output -o
+                set i (math $i + 1); set output_dir "$argv[$i]"
+            case --tag -t
+                set i (math $i + 1); set custom_tag "$argv[$i]"
+            case '--*'
+                _log_error "Opção desconhecida: $argv[$i]"
+                return 1
+            case '*'
+                set project_name "$argv[$i]"
+        end
+        set i (math $i + 1)
+    end
+
+    # Import mode
+    if test "$do_import" = "true"
+        if test -n "$project_name"
+            set -l tag (test -n "$custom_tag" && echo $custom_tag || _extract_tag $project_name)
+            _do_import "$project_name" "$tag"
+        else
+            _do_import
+        end
+        return $status
+    end
+
+    # Migrate mode
+    if test "$do_migrate" = "true"
+        if test -z "$project_name"
+            _log_error "Nome obrigatório para migração."
+            _log_error 'Uso: claude-project-init --migrate "Categoria/Nome"'
+            return 1
+        end
+        _do_migrate "$project_name" "$output_dir"
+        return $status
+    end
+
+    # Interactive (no name given)
+    if test -z "$project_name"
+        _interactive; return $status
+    end
+
+    # Non-interactive create
+    set -l tag (test -n "$custom_tag" && echo $custom_tag || _extract_tag $project_name)
+    _create_project "$project_name" "$tag" "$role" "$stack" "$output_dir" "$dry_run"
+end
+
+main $argv

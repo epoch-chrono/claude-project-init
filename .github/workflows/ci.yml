@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Fish shell
+        run: |
+          sudo apt-add-repository -y ppa:fish-shell/release-3
+          sudo apt-get update -qq
+          sudo apt-get install -y fish
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Fish syntax check
+        run: fish -n bin/claude-project-init
+
+      - name: Python syntax check
+        run: python3 -m py_compile lib/cpi_engine.py
+
+      - name: Smoke test — --help
+        run: fish bin/claude-project-init --help
+
+      - name: Smoke test — --version
+        run: |
+          version=$(fish bin/claude-project-init --version)
+          echo "Version: $version"
+          echo "$version" | grep -q "claude-project-init v"
+
+      - name: Smoke test — --dry-run
+        run: fish bin/claude-project-init --dry-run "Test/SmokeTest" --role "tester" --stack "CI"
+
+      - name: Smoke test — create project
+        run: |
+          fish bin/claude-project-init "Test/CI" \
+            --role "test engineer" \
+            --stack "GitHub Actions" \
+            --output /tmp/ci-test
+          test -f /tmp/ci-test/Test-CI/README.md
+          test -f /tmp/ci-test/Test-CI/INSTRUCOES.md
+          test -f /tmp/ci-test/Test-CI/DESCRICAO.txt
+          test -f /tmp/ci-test/Test-CI/metaprompt-resumo.md
+          test -f /tmp/ci-test/Test-CI/metaprompt-retomar.md
+          test -f /tmp/ci-test/Test-CI/metaprompt-iniciar.md
+          echo "All files generated correctly"
+
+      - name: Smoke test — --import non-interactive
+        run: |
+          fish bin/claude-project-init --import "Imported/Project" --tag "Project"
+          fish bin/claude-project-init --list | grep -q "Imported/Project"
+
+      - name: Smoke test — --migrate
+        run: |
+          fish bin/claude-project-init --migrate "Legacy/App" --output /tmp/ci-test
+          test -f /tmp/ci-test/Legacy-App/MIGRACAO-CHECKLIST.md
+          test -f /tmp/ci-test/Legacy-App/INSTRUCOES.md
+          echo "Migration files generated correctly"
+
+      - name: Smoke test — registry cross-reference
+        run: |
+          # Projects from previous steps should appear in new project's instructions
+          fish bin/claude-project-init "Test/CrossRef" \
+            --role "tester" --stack "CI" \
+            --output /tmp/ci-test
+          grep -q "Imported/Project" /tmp/ci-test/Test-CrossRef/INSTRUCOES.md
+          echo "Cross-reference tags working"
+
+      - name: Version consistency check
+        run: |
+          py_ver=$(python3 -c "
+          import re
+          with open('lib/cpi_engine.py') as f:
+              for line in f:
+                  m = re.match(r'VERSION\s*=\s*\"(.+?)\"', line)
+                  if m: print(m.group(1)); break
+          ")
+          fish_ver=$(fish bin/claude-project-init --version | grep -oP 'v\K[\d.]+')
+          if [ "$py_ver" != "$fish_ver" ]; then
+            echo "ERROR: Python ($py_ver) != Fish ($fish_ver)"
+            exit 1
+          fi
+          echo "Versions match: $py_ver"

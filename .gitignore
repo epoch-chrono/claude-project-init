@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+._*
+
+# Editors
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Test artifacts
+/tmp/
+test-output/
+
+# mise local config (user-specific)
+.mise.local.toml
