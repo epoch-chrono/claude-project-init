@@ -31,6 +31,11 @@ test: lint ## Run smoke tests
 	@fish bin/claude-project-init "Test/XRef" --role "t" --stack "t" --output /tmp/cpi-make-test > /dev/null
 	@grep -q "Test/Import" /tmp/cpi-make-test/Test-XRef/INSTRUCOES.md && echo "✔ Cross-ref OK"
 	@rm -rf /tmp/cpi-make-test
+	@echo "── cleanup registry"
+	@fish bin/claude-project-init --remove "Test/Make" > /dev/null 2>&1; true
+	@fish bin/claude-project-init --remove "Test/Import" > /dev/null 2>&1; true
+	@fish bin/claude-project-init --remove "Test/Migrate" > /dev/null 2>&1; true
+	@fish bin/claude-project-init --remove "Test/XRef" > /dev/null 2>&1; true
 	@echo ""
 	@echo "✔ All tests passed"
 
@@ -38,6 +43,10 @@ clean: ## Remove test artifacts
 	rm -rf /tmp/cpi-make-test
 	rm -f lib/__pycache__/*.pyc
 	rm -rf lib/__pycache__
+	@fish bin/claude-project-init --remove "Test/Make" > /dev/null 2>&1; true
+	@fish bin/claude-project-init --remove "Test/Import" > /dev/null 2>&1; true
+	@fish bin/claude-project-init --remove "Test/Migrate" > /dev/null 2>&1; true
+	@fish bin/claude-project-init --remove "Test/XRef" > /dev/null 2>&1; true
 
 release: lint test ## Create a release tag (usage: make release V=1.2.0)
 ifndef V
