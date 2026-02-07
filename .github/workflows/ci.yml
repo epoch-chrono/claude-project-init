@@ -60,6 +60,18 @@ jobs:
           fish bin/claude-project-init --import "Imported/Project" --tag "Project"
           fish bin/claude-project-init --list | grep -q "Imported/Project"
 
+      - name: Smoke test — --remove
+        run: |
+          fish bin/claude-project-init --import "Test/ToRemove" --tag "ToRemove"
+          fish bin/claude-project-init --remove "Test/ToRemove"
+          fish bin/claude-project-init --list | grep -qv "Test/ToRemove"
+
+      - name: Smoke test — completion
+        run: |
+          fish bin/claude-project-init completion fish | grep -q "complete -c claude-project-init"
+          fish bin/claude-project-init completion bash | grep -q "COMPREPLY"
+          fish bin/claude-project-init completion zsh | grep -q "compdef"
+
       - name: Smoke test — --migrate
         run: |
           fish bin/claude-project-init --migrate "Legacy/App" --output /tmp/ci-test

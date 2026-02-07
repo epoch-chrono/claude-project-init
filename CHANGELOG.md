@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-02-07
+
+### Added
+- `--remove` command to delete projects from local registry
+- `--remove` interactive mode (shows list, asks which to remove)
+- `completion` subcommand generating shell completions for Fish, Bash, and Zsh
+- `completion --names` internal helper for dynamic completions
+- `registry_remove` and `registry_names` operations in Python engine
+
 ## [1.1.0] - 2025-02-07
 
 ### Added

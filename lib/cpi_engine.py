@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 CONFIG_DIR = Path.home() / ".config" / "claude-project-init"
 REGISTRY = CONFIG_DIR / "registry.json"
 
@@ -69,6 +69,24 @@ def registry_count():
 def registry_exists(name):
     data = load_registry()
     print("yes" if any(p["name"] == name for p in data["projects"]) else "no")
+
+
+def registry_remove(name):
+    data = load_registry()
+    before = len(data["projects"])
+    data["projects"] = [p for p in data["projects"] if p["name"] != name]
+    if len(data["projects"]) == before:
+        print("not_found")
+    else:
+        save_registry(data)
+        print("ok")
+
+
+def registry_names():
+    """List just project names, one per line — used for completions."""
+    data = load_registry()
+    for p in sorted(data["projects"], key=lambda x: x["name"]):
+        print(p["name"])
 
 
 # ─── Tag List Helper ──────────────────────────────────────────────────────────
@@ -469,6 +487,10 @@ def main():
         registry_count()
     elif cmd == "registry_exists":
         registry_exists(sys.argv[2])
+    elif cmd == "registry_remove":
+        registry_remove(sys.argv[2])
+    elif cmd == "registry_names":
+        registry_names()
     elif cmd == "generate":
         # generate <filepath> <template> <name> <tag> [role] [stack]
         filepath = sys.argv[2]

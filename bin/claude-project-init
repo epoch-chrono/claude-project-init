@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 # File: claude-project-init
-# Version: v1.1.0
+# Version: v1.2.0
 # Created: 2025-02-07 19:30
 # Last Updated: 2025-02-07 20:00
 # Purpose: CLI to scaffold Claude Projects with optimized structure
@@ -257,6 +257,114 @@ function _do_migrate -a name output_dir
     end
 end
 
+# ─── Remove ───────────────────────────────────────────────────────────────────
+
+function _do_remove -a name
+    if test -z "$name"
+        # Interactive: show list and ask
+        echo ""
+        _registry_list
+        if test $status -ne 0
+            return 1
+        end
+        read -P "$C_C  Nome do projeto a remover$C_R: " name
+        test -z "$name"; and _log_warn "Cancelado."; and return 1
+    end
+
+    set -l result (_engine registry_remove "$name")
+    if test "$result" = "not_found"
+        _log_error "Projeto '$name' não encontrado na registry."
+        return 1
+    end
+
+    _log_ok "Removido: $name"
+    echo ""
+    echo "$C_D  Nota: isso remove apenas da registry local.$C_R"
+    echo "$C_D  O projeto no Claude (claude.ai) não é afetado.$C_R"
+    echo ""
+end
+
+# ─── Completion ───────────────────────────────────────────────────────────────
+
+function _do_completion -a shell
+    switch "$shell"
+        case fish
+            echo '# Fish completions for claude-project-init'
+            echo '# Add to ~/.config/fish/completions/claude-project-init.fish'
+            echo ''
+            echo '# Disable file completions'
+            echo 'complete -c claude-project-init -f'
+            echo ''
+            echo '# Flags'
+            echo 'complete -c claude-project-init -l help -s h -d "Show help"'
+            echo 'complete -c claude-project-init -l version -s v -d "Show version"'
+            echo 'complete -c claude-project-init -l list -l list-projects -d "List registered projects"'
+            echo 'complete -c claude-project-init -l dry-run -d "Preview without creating files"'
+            echo 'complete -c claude-project-init -l import -d "Import existing project(s)"'
+            echo 'complete -c claude-project-init -l migrate -d "Generate migration files"'
+            echo 'complete -c claude-project-init -l remove -d "Remove project from registry"'
+            echo 'complete -c claude-project-init -l role -d "Role for the AI assistant" -r'
+            echo 'complete -c claude-project-init -l stack -d "Technologies/stack" -r'
+            echo 'complete -c claude-project-init -l output -s o -d "Output directory" -r -F'
+            echo 'complete -c claude-project-init -l tag -s t -d "Custom tag" -r'
+            echo 'complete -c claude-project-init -l completion -d "Generate shell completions" -r -f -a "fish bash zsh"'
+            echo ''
+            echo '# Dynamic project names for --remove and --migrate'
+            echo 'complete -c claude-project-init -l remove -r -f -a "(claude-project-init completion --names 2>/dev/null)"'
+            echo 'complete -c claude-project-init -l migrate -r -f -a "(claude-project-init completion --names 2>/dev/null)"'
+        case bash
+            echo '# Bash completions for claude-project-init'
+            echo '# Add to ~/.bashrc or ~/.bash_completion.d/claude-project-init'
+            echo ''
+            echo '_claude_project_init_completions() {'
+            echo '    local cur="${COMP_WORDS[COMP_CWORD]}"'
+            echo '    local opts="--help --version --list --dry-run --import --migrate --remove --role --stack --output --tag --completion"'
+            echo '    COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )'
+            echo '}'
+            echo 'complete -F _claude_project_init_completions claude-project-init'
+        case zsh
+            echo '# Zsh completions for claude-project-init'
+            echo '# Add to a directory in your $fpath, e.g. ~/.zfunc/_claude-project-init'
+            echo ''
+            echo '#compdef claude-project-init'
+            echo ''
+            echo '_claude-project-init() {'
+            echo '    _arguments \'
+            echo '        "--help[Show help]" \'
+            echo '        "--version[Show version]" \'
+            echo '        "--list[List registered projects]" \'
+            echo '        "--dry-run[Preview without creating]" \'
+            echo '        "--import[Import existing project]" \'
+            echo '        "--migrate[Generate migration files]:project:" \'
+            echo '        "--remove[Remove from registry]:project:" \'
+            echo '        "--role[AI assistant role]:role:" \'
+            echo '        "--stack[Technologies]:stack:" \'
+            echo '        "--output[Output directory]:dir:_directories" \'
+            echo '        "--tag[Custom tag]:tag:" \'
+            echo '        "--completion[Generate completions]:shell:(fish bash zsh)"'
+            echo '}'
+            echo ''
+            echo '_claude-project-init'
+        case --names
+            # Internal: output project names for dynamic completions
+            _engine registry_names
+        case ''
+            echo "Usage: claude-project-init completion <shell>"
+            echo ""
+            echo "Available shells: fish, bash, zsh"
+            echo ""
+            echo "Examples:"
+            echo "  claude-project-init completion fish | source"
+            echo "  claude-project-init completion fish > ~/.config/fish/completions/claude-project-init.fish"
+            echo "  claude-project-init completion bash >> ~/.bashrc"
+            echo "  claude-project-init completion zsh > ~/.zfunc/_claude-project-init"
+        case '*'
+            _log_error "Shell não suportado: $shell"
+            _log_error "Shells disponíveis: fish, bash, zsh"
+            return 1
+    end
+end
+
 # ─── Interactive ──────────────────────────────────────────────────────────────
 
 function _interactive
@@ -328,14 +436,18 @@ function _help
     echo "$C_B  GESTÃO DE PROJETOS:$C_R"
     echo "    --import            Registrar projeto(s) existente(s) na registry"
     echo '    --migrate <nome>    Gerar arquivos p/ migrar projeto p/ best practices'
+    echo '    --remove <nome>     Remover projeto da registry local'
     echo "    --list              Listar projetos registrados"
+    echo "    completion <shell>  Gerar autocompletion (fish, bash, zsh)"
     echo ""
     echo "$C_B  EXEMPLOS:$C_R"
     echo '    claude-project-init "Apoiase/Monitoring"'
     echo "    claude-project-init --import                  # interativo, múltiplos"
     echo '    claude-project-init --import "Home/Bot" --tag "Bot"'
     echo '    claude-project-init --migrate "Home/Bot"'
+    echo '    claude-project-init --remove "Home/OldProject"'
     echo '    claude-project-init --dry-run "Home/Test"'
+    echo "    claude-project-init completion fish | source"
     echo ""
     echo "$C_B  INSTALL:$C_R  mise use -g github:epoch-chrono/claude-project-init"
     echo "$C_B  REGISTRY:$C_R $CPI_REGISTRY"
@@ -359,6 +471,8 @@ function main
     set -l dry_run false
     set -l do_import false
     set -l do_migrate false
+    set -l do_remove false
+    set -l do_completion ""
 
     set -l i 1
     while test $i -le (count $argv)
@@ -375,6 +489,13 @@ function main
                 set do_import true
             case --migrate --from-existing
                 set do_migrate true
+            case --remove --rm
+                set do_remove true
+            case completion
+                set i (math $i + 1)
+                set do_completion (test $i -le (count $argv) && echo "$argv[$i]" || echo "")
+                _do_completion "$do_completion"
+                return $status
             case --role
                 set i (math $i + 1); set role "$argv[$i]"
             case --stack
@@ -411,6 +532,12 @@ function main
             return 1
         end
         _do_migrate "$project_name" "$output_dir"
+        return $status
+    end
+
+    # Remove mode
+    if test "$do_remove" = "true"
+        _do_remove "$project_name"
         return $status
     end
 
