@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 CONFIG_DIR = Path.home() / ".config" / "claude-project-init"
 REGISTRY = CONFIG_DIR / "registry.json"
 
@@ -114,7 +114,7 @@ def gen_description(name, role, stack):
 
 Estrutura: Instruções (contexto, papel, comandos, versionamento) |
 Arquivos (metaprompts, templates, documentação) | Memórias (automático).
-Comandos: [RESUMO] [RETOMAR] [INICIAR] [TAG] [ARTEFATOS] [VERSIONAR].
+Comandos: [RESUMO] [RETOMAR] [INICIAR] [CHECKPOINT] [TAG] [ARTEFATOS] [VERSIONAR].
 Versionamento: SemVer (vMAIOR.MENOR.PATCH) com timestamp no nome.
 Role: {role}
 Stack: {stack}
@@ -170,6 +170,7 @@ Cabeçalho obrigatório (quando o formato aceitar comentários):
 - `[RESUMO]` → Resumo completo da sessão (metaprompt-resumo.md)
 - `[RETOMAR]` → Preparação para retomar sessão anterior (metaprompt-retomar.md)
 - `[INICIAR]` → Início de nova sessão com contexto (metaprompt-iniciar.md)
+- `[CHECKPOINT]` → Snapshot consolidado do projeto inteiro (metaprompt-checkpoint.md)
 - `[TAG]` → Apenas sugerir título formatado para a conversa
 - `[ARTEFATOS]` → Listar e versionar todos os artefatos da sessão
 - `[VERSIONAR]` → Analisar mudanças e sugerir novas versões SemVer
@@ -365,6 +366,142 @@ Use apenas o resumo mais recente.
 """
 
 
+def gen_metaprompt_checkpoint():
+    return f"""# File: metaprompt-checkpoint.md
+# Version: v1.0.0
+# Created: {_iso()}
+# Purpose: Metaprompt para checkpoint consolidado do projeto
+# Gatilho: Usuário digita [CHECKPOINT]
+
+# METAPROMPT: CHECKPOINT DO PROJETO
+
+Gatilho: `[CHECKPOINT]`
+
+## OBJETIVO
+
+Produzir um snapshot consolidado do PROJETO INTEIRO — não de uma sessão.
+Diferença fundamental:
+- `[RESUMO]` → foto de UMA sessão
+- `[CHECKPOINT]` → foto do PROJETO (estado da arte acumulado)
+
+O checkpoint permite:
+1. Limpar/arquivar conversas antigas sem perder contexto
+2. Consolidar informação fragmentada em múltiplas sessões
+3. Eliminar redundâncias e decisões obsoletas
+4. Criar ponto de restart limpo para o projeto
+
+---
+
+## INSTRUÇÕES
+
+Pense ordenadamente. Leia TODAS as fontes disponíveis antes de produzir o checkpoint.
+
+### PASSO 1: VARREDURA COMPLETA
+
+Consulte todas as fontes de contexto do projeto:
+1. **Instruções do projeto** — escopo, papel, stack, convenções
+2. **Arquivos no Knowledge** — resumos anteriores, artefatos, docs
+3. **Conversas recentes** — use busca para encontrar decisões e contexto
+4. **Memórias do projeto** — informações acumuladas automaticamente
+
+### PASSO 2: INVENTÁRIO DE ARTEFATOS
+
+Para CADA artefato que ainda é relevante:
+1. Nome e versão mais recente
+2. Onde está (Knowledge, conversa, repositório externo)
+3. Status: ativo | deprecado | substituído
+4. Se deprecado/substituído: indicar pelo quê
+
+Produzir tabela:
+```
+| Artefato | Versão | Status | Localização | Notas |
+```
+
+### PASSO 3: DECISÕES VIGENTES
+
+Listar decisões arquiteturais e técnicas que AINDA valem:
+- O que foi decidido
+- Justificativa (1 frase)
+- Quando (conversa/data aproximada)
+
+Excluir: decisões revertidas, experimentos abandonados, tentativas que falharam.
+Se uma decisão foi substituída, registrar apenas a versão atual.
+
+### PASSO 4: ESTADO ATUAL DO PROJETO
+
+- O que está funcionando (features, integrações, deploys)
+- O que NÃO está funcionando (bugs conhecidos, limitações)
+- Configurações ativas (URLs, parâmetros, versões)
+- Dependências externas e seus estados
+
+### PASSO 5: PROBLEMAS E DÍVIDA TÉCNICA
+
+- Bugs conhecidos não resolvidos
+- Dívida técnica acumulada
+- Riscos identificados
+- Perguntas em aberto
+
+### PASSO 6: PRÓXIMOS PASSOS
+
+Numere por prioridade (máximo 7).
+Separe em:
+- **Imediato** (próxima sessão)
+- **Curto prazo** (próximas 3-5 sessões)
+- **Backlog** (quando houver tempo)
+
+---
+
+## FORMATO DE SAÍDA
+
+Produzir UM arquivo consolidado:
+
+```markdown
+# CHECKPOINT: [Nome do Projeto]
+# Data: YYYY-MM-DD HH:MM
+# Cobre: [data início] até [data fim]
+# Conversas consolidadas: [quantidade]
+
+## 1. VISÃO GERAL
+[Estado do projeto em 3-5 frases]
+
+## 2. ARTEFATOS VIGENTES
+[Tabela do Passo 2 — apenas ativos]
+
+## 3. DECISÕES VIGENTES
+[Lista do Passo 3]
+
+## 4. ESTADO ATUAL
+[Passo 4]
+
+## 5. PROBLEMAS E DÍVIDA TÉCNICA
+[Passo 5]
+
+## 6. PRÓXIMOS PASSOS
+[Passo 6]
+
+## 7. CONTEXTO PARA CONTINUAÇÃO
+[Tudo que a próxima sessão precisa saber pra começar sem perguntar]
+```
+
+Salvar como: `checkpoint-YYYYMMDD-HHMM.v1.0.0.md`
+
+## PÓS-CHECKPOINT
+
+Após gerar o checkpoint, sugerir:
+1. "Faça upload do checkpoint nos Arquivos do projeto"
+2. "Remova resumos antigos que foram consolidados"
+3. "Conversas anteriores ao checkpoint podem ser arquivadas/deletadas"
+4. "Próxima sessão: use [INICIAR] — o checkpoint será detectado automaticamente"
+
+## CHECKLIST FINAL
+- [ ] Todas as fontes foram consultadas?
+- [ ] Nenhum artefato ativo foi omitido?
+- [ ] Decisões obsoletas foram excluídas (não apenas marcadas)?
+- [ ] O checkpoint é autossuficiente (não depende de conversas anteriores)?
+- [ ] Próximos passos são acionáveis?
+"""
+
+
 def gen_readme(name, tag):
     ts = _ts()
     return f"""# SETUP: {name}
@@ -387,6 +524,7 @@ Arrastar para "Arquivos" do projeto:
 1. `metaprompt-resumo.md`
 2. `metaprompt-retomar.md`
 3. `metaprompt-iniciar.md`
+4. `metaprompt-checkpoint.md`
 
 ### 4. Primeira Conversa
 - Nova conversa no projeto → `[INICIAR]`
@@ -398,12 +536,13 @@ Arrastar para "Arquivos" do projeto:
 
 | Comando       | Função                                  |
 |---------------|-----------------------------------------|
-| `[RESUMO]`    | Resumo completo da sessão               |
-| `[RETOMAR]`   | Reconstroi contexto anterior            |
-| `[INICIAR]`   | Briefing e definição de objetivo        |
-| `[TAG]`       | Sugere título formatado                 |
-| `[ARTEFATOS]` | Lista e versiona artefatos              |
-| `[VERSIONAR]` | Analisa mudanças, sugere versões SemVer |
+| `[RESUMO]`      | Resumo completo da sessão               |
+| `[RETOMAR]`     | Reconstroi contexto anterior            |
+| `[INICIAR]`     | Briefing e definição de objetivo        |
+| `[CHECKPOINT]`  | Snapshot consolidado do projeto inteiro |
+| `[TAG]`         | Sugere título formatado                 |
+| `[ARTEFATOS]`   | Lista e versiona artefatos              |
+| `[VERSIONAR]`   | Analisa mudanças, sugere versões SemVer |
 
 ## TÍTULOS
 Formato: `({tag})({ts})-Descrição concisa`
@@ -434,6 +573,7 @@ Gerado em {_iso()}.
   - [ ] metaprompt-resumo.md
   - [ ] metaprompt-retomar.md
   - [ ] metaprompt-iniciar.md
+  - [ ] metaprompt-checkpoint.md
 
 ## VERSIONAR ARTEFATOS
 - [ ] Sem versão → v1.0.0
@@ -459,6 +599,7 @@ def generate_file(filepath, template, name="", tag="", role="", stack=""):
         "metaprompt_resumo": gen_metaprompt_resumo,
         "metaprompt_retomar": gen_metaprompt_retomar,
         "metaprompt_iniciar": gen_metaprompt_iniciar,
+        "metaprompt_checkpoint": gen_metaprompt_checkpoint,
         "readme": lambda: gen_readme(name, tag),
         "migration": lambda: gen_migration_checklist(name, tag),
     }

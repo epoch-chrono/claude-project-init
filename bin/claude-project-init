@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 # File: claude-project-init
-# Version: v1.2.0
+# Version: v1.3.0
 # Created: 2025-02-07 19:30
 # Last Updated: 2025-02-07 20:00
 # Purpose: CLI to scaffold Claude Projects with optimized structure
@@ -99,7 +99,7 @@ function _create_project -a name tag role stack output_dir dry_run
         echo "  Diretório:  $project_dir/"
         echo ""
         echo "  Arquivos que seriam criados:"
-        for f in README.md DESCRICAO.txt INSTRUCOES.md metaprompt-resumo.md metaprompt-retomar.md metaprompt-iniciar.md
+        for f in README.md DESCRICAO.txt INSTRUCOES.md metaprompt-resumo.md metaprompt-retomar.md metaprompt-iniciar.md metaprompt-checkpoint.md
             echo "    $project_dir/$f"
         end
         echo ""
@@ -131,6 +131,9 @@ function _create_project -a name tag role stack output_dir dry_run
     _log_step "Gerando metaprompt-iniciar.md"
     _engine generate "$project_dir/metaprompt-iniciar.md" metaprompt_iniciar "$name" "$tag"
 
+    _log_step "Gerando metaprompt-checkpoint.md"
+    _engine generate "$project_dir/metaprompt-checkpoint.md" metaprompt_checkpoint "$name" "$tag"
+
     _log_step "Gerando README.md"
     _engine generate "$project_dir/README.md" readme "$name" "$tag"
 
@@ -156,6 +159,7 @@ function _create_project -a name tag role stack output_dir dry_run
         echo "     $C_C$project_dir/metaprompt-resumo.md$C_R"
         echo "     $C_C$project_dir/metaprompt-retomar.md$C_R"
         echo "     $C_C$project_dir/metaprompt-iniciar.md$C_R"
+        echo "     $C_C$project_dir/metaprompt-checkpoint.md$C_R"
         echo "  5. Primeira conversa: digitar" $C_B"[INICIAR]"$C_R
         echo ""
         echo "$C_D  Dica: instale glow para visualização rica do README$C_R"
@@ -231,10 +235,14 @@ function _do_migrate -a name output_dir
 
     mkdir -p "$project_dir"
 
+    _log_step "Gerando DESCRICAO.txt"
+    _engine generate "$project_dir/DESCRICAO.txt" description "$name" "$tag" "[TODO: definir role]" "[TODO: definir stack]"
+
     _log_step "Gerando metaprompts"
     _engine generate "$project_dir/metaprompt-resumo.md" metaprompt_resumo "$name" "$tag"
     _engine generate "$project_dir/metaprompt-retomar.md" metaprompt_retomar "$name" "$tag"
     _engine generate "$project_dir/metaprompt-iniciar.md" metaprompt_iniciar "$name" "$tag"
+    _engine generate "$project_dir/metaprompt-checkpoint.md" metaprompt_checkpoint "$name" "$tag"
 
     _log_step "Gerando template de instruções"
     _engine generate "$project_dir/INSTRUCOES.md" instructions "$name" "$tag" "[TODO: definir role]" "[TODO: definir stack]"

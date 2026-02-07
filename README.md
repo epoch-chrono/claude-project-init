@@ -92,7 +92,9 @@ Home-RaspberryPi/
 ├── INSTRUCOES.md              # Content for the "Instructions" field
 ├── metaprompt-resumo.md       # [RESUMO] — session summary
 ├── metaprompt-retomar.md      # [RETOMAR] — resume previous session
-└── metaprompt-iniciar.md      # [INICIAR] — start new session with context
+├── metaprompt-iniciar.md      # [INICIAR] — start new session with context
+└── metaprompt-checkpoint.md   # [CHECKPOINT] — consolidated project snapshot
+└── metaprompt-checkpoint.md   # [CHECKPOINT] — consolidated project snapshot
 ```
 
 ### Setup Flow
@@ -101,7 +103,7 @@ Home-RaspberryPi/
 2. Create a project in [claude.ai](https://claude.ai) → Projects → New Project
 3. Paste `DESCRICAO.txt` into the Description field
 4. Paste `INSTRUCOES.md` into the Instructions field (edit the CONTEXTO section)
-5. Drag the 3 metaprompt files into Project Knowledge
+5. Drag the 4 metaprompt files into Project Knowledge
 6. Start a conversation and type `[INICIAR]`
 
 ## Commands (inside Claude)
@@ -111,6 +113,7 @@ Home-RaspberryPi/
 | `[INICIAR]`    | Start session with project briefing       |
 | `[RESUMO]`     | Generate comprehensive session summary    |
 | `[RETOMAR]`    | Resume from a previous session's context  |
+| `[CHECKPOINT]` | Consolidated snapshot of entire project   |
 | `[TAG]`        | Suggest formatted conversation title      |
 | `[ARTEFATOS]`  | List and version session artifacts        |
 | `[VERSIONAR]`  | Analyze changes, suggest SemVer bumps     |

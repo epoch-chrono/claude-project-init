@@ -53,6 +53,7 @@ jobs:
           test -f /tmp/ci-test/Test-CI/metaprompt-resumo.md
           test -f /tmp/ci-test/Test-CI/metaprompt-retomar.md
           test -f /tmp/ci-test/Test-CI/metaprompt-iniciar.md
+          test -f /tmp/ci-test/Test-CI/metaprompt-checkpoint.md
           echo "All files generated correctly"
 
       - name: Smoke test — --import non-interactive
