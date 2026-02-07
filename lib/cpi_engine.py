@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.3.1"
+VERSION = "1.4.0"
 CONFIG_DIR = Path.home() / ".config" / "claude-project-init"
 REGISTRY = CONFIG_DIR / "registry.json"
 
@@ -45,6 +45,18 @@ def registry_add(name, tag):
     save_registry(data)
 
 
+def registry_set_migrated(name):
+    data = load_registry()
+    for p in data["projects"]:
+        if p["name"] == name:
+            p["migrated"] = True
+            p["updated"] = datetime.now().isoformat(timespec="seconds")
+            save_registry(data)
+            print("ok")
+            return
+    print("not_found")
+
+
 def registry_list():
     data = load_registry()
     projects = sorted(data["projects"], key=lambda x: x["name"])
@@ -52,7 +64,8 @@ def registry_list():
         print("__EMPTY__")
         return
     for p in projects:
-        print(f"  {p['name']:<35} ({p['tag']})")
+        migrated = "✔" if p.get("migrated") else " "
+        print(f"  [{migrated}] {p['name']:<35} ({p['tag']})")
     print(f"__COUNT__{len(projects)}")
 
 
@@ -630,6 +643,8 @@ def main():
         registry_exists(sys.argv[2])
     elif cmd == "registry_remove":
         registry_remove(sys.argv[2])
+    elif cmd == "registry_set_migrated":
+        registry_set_migrated(sys.argv[2])
     elif cmd == "registry_names":
         registry_names()
     elif cmd == "generate":

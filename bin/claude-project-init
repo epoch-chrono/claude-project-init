@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 # File: claude-project-init
-# Version: v1.3.1
+# Version: v1.4.0
 # Created: 2025-02-07 19:30
 # Last Updated: 2025-02-07 20:00
 # Purpose: CLI to scaffold Claude Projects with optimized structure
@@ -139,6 +139,7 @@ function _create_project -a name tag role stack output_dir dry_run
 
     _log_step "Registrando no registry"
     _engine registry_add "$name" "$tag"
+    _engine registry_set_migrated "$name"
 
     _log_ok "Projeto criado com sucesso!"
     echo ""
@@ -251,6 +252,7 @@ function _do_migrate -a name output_dir
     _engine generate "$project_dir/MIGRACAO-CHECKLIST.md" migration "$name" "$tag"
 
     _engine registry_add "$name" "$tag"
+    _engine registry_set_migrated "$name"
 
     _log_ok "Arquivos de migração gerados!"
     echo ""

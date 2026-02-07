@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-02-07
+
+### Added
+- Migration status indicator in `--list`: `[✔]` migrated, `[ ]` pending
+- `registry_set_migrated` operation in Python engine
+- Both `create` and `--migrate` now mark projects as migrated in registry
+
+### Changed
+- Registry schema: new optional `migrated` field (backward compatible)
+
 ## [1.3.1] - 2025-02-07
 
 ### Fixed
