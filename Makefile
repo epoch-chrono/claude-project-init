@@ -46,6 +46,7 @@ endif
 	@echo "Tagging v$(V)..."
 	git tag -a "v$(V)" -m "Release v$(V)"
 	git push origin "v$(V)"
+	git push origin "$$(git branch --show-current)"
 	@echo "✔ Tag v$(V) pushed — GitHub Actions will create the release"
 
 version: ## Show current version

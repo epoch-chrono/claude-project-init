@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 CONFIG_DIR = Path.home() / ".config" / "claude-project-init"
 REGISTRY = CONFIG_DIR / "registry.json"
 
