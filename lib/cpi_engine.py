@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.4.1"
+VERSION = "2.0.0"
 CONFIG_DIR = Path.home() / ".config" / "claude-project-init"
 REGISTRY = CONFIG_DIR / "registry.json"
 
@@ -125,8 +125,7 @@ def _iso():
 def gen_description(name, role, stack):
     return f"""{name} — Projeto Claude com organização otimizada.
 
-Estrutura: Instruções (contexto, papel, comandos, versionamento) |
-Arquivos (metaprompts, templates, documentação) | Memórias (automático).
+Estrutura: Instruções (contexto, papel, comandos inline, versionamento) | Memórias (automático).
 Comandos: [RESUMO] [RETOMAR] [INICIAR] [CHECKPOINT] [TAG] [ARTEFATOS] [VERSIONAR].
 Versionamento: SemVer (vMAIOR.MENOR.PATCH) com timestamp no nome.
 Role: {role}
@@ -137,7 +136,7 @@ Stack: {stack}
 def gen_instructions(name, tag, role, stack):
     tag_list = _get_tag_list_str()
     return f"""# File: INSTRUCOES.md
-# Version: v1.0.0
+# Version: v2.0.0
 # Created: {_iso()}
 # Purpose: Instruções do projeto {name}
 
@@ -145,373 +144,60 @@ def gen_instructions(name, tag, role, stack):
 
 ## CONTEXTO
 
-[TODO: Descreva o objetivo principal do projeto em 2-3 frases.]
-[Inclua escopo, estado atual e tecnologias envolvidas.]
+[TODO: Objetivo principal em 2-3 frases. Escopo, estado atual, tecnologias.]
 Stack: {stack}
 
 ## PAPEL
 
-Atue como {role}. Forneça:
-- Código e soluções técnicas
-- Arquitetura e boas práticas
-- Divisão de tarefas complexas em etapas com confirmações
+Atue como {role}.
 
-## VERSIONAMENTO SEMÂNTICO
+## COMANDOS DE SESSÃO
 
-Todos os artefatos devem usar SemVer:
+Todos os comandos abaixo são acionados pelo usuário digitando o gatilho entre colchetes.
 
-Formato do nome: `nome.vMAIOR.MENOR.PATCH.YYYYMMDD-HHMM.ext`
+### [INICIAR]
+Faça inventário do projeto (resumos, artefatos, pendências). Apresente briefing de 5-8 linhas: nome, objetivo, última sessão, pendências. Pergunte o foco desta sessão e proponha plano em até 5 etapas. Se for primeiro uso, confirme escopo e comece pelo fundamental.
 
-- MAIOR: breaking changes, refatoração completa
-- MENOR: novas funcionalidades compatíveis
-- PATCH: correções de bugs, ajustes menores
+### [RESUMO]
+Leia toda a conversa e produza resumo **autossuficiente** para retomar em outra sessão. Deve conter: objetivo original, o que foi feito (com decisões e justificativas), estado atual (funciona/não funciona/configs), problemas pendentes, artefatos com versão, próximos passos (máx 5 priorizados), e prompt de continuação em 1 linha. Salvar como `resumo-sessao-YYYYMMDD-HHMM.v1.0.0.md`.
 
-Cabeçalho obrigatório (quando o formato aceitar comentários):
+### [RETOMAR]
+Localize resumo mais recente (arquivo anexo ou Knowledge). Reconstrua estado: onde paramos, o que funciona, configs ativas, pendências. Valide com o usuário antes de prosseguir. Se não encontrar resumo, peça contexto.
 
+### [CHECKPOINT]
+Diferente de RESUMO (1 sessão), CHECKPOINT é snapshot do **projeto inteiro**. Consulte todas as fontes (instruções, knowledge, conversas, memórias). Produza arquivo consolidado com: visão geral, artefatos vigentes (tabela), decisões vigentes, estado atual, dívida técnica, próximos passos (imediato/curto/backlog). Deve ser autossuficiente — não depender de conversas anteriores. Incluir seção final "Memórias": listar memory edits em escopo do projeto, exportar cada uma como artefato separado, e perguntar ao usuário quais podem ser removidas das memórias globais (já que ficaram registradas no checkpoint). Salvar como `checkpoint-YYYYMMDD-HHMM.v1.0.0.md`. Após gerar, sugerir limpeza de resumos antigos e memórias consolidadas.
+
+### [TAG]
+Sugerir título: `({tag})(YYYYMMDD-HHMM)-Descrição concisa (máx 8 palavras)`
+
+### [ARTEFATOS]
+Listar todos os artefatos da sessão com nome, versão e status.
+
+### [VERSIONAR]
+Analisar mudanças nos artefatos e sugerir bump SemVer (MAIOR/MENOR/PATCH).
+
+## VERSIONAMENTO
+
+Nome: `nome.vMAIOR.MENOR.PATCH.YYYYMMDD-HHMM.ext`
+Cabeçalho (quando formato aceitar comentários):
 ```
 # File: nome.vX.Y.Z.YYYYMMDD-HHMM.ext
 # Version: vX.Y.Z
-# Created: YYYY-MM-DD HH:MM
-# Last Updated: YYYY-MM-DD HH:MM
+# Created/Updated: YYYY-MM-DD HH:MM
 # Purpose: [descrição breve]
-# Changes:
-#   vX.Y.Z - [tipo]: [descrição]
 ```
 
-## COMANDOS DE CONTROLE
+## TAGS
 
-- `[RESUMO]` → Resumo completo da sessão (metaprompt-resumo.md)
-- `[RETOMAR]` → Preparação para retomar sessão anterior (metaprompt-retomar.md)
-- `[INICIAR]` → Início de nova sessão com contexto (metaprompt-iniciar.md)
-- `[CHECKPOINT]` → Snapshot consolidado do projeto inteiro (metaprompt-checkpoint.md)
-- `[TAG]` → Apenas sugerir título formatado para a conversa
-- `[ARTEFATOS]` → Listar e versionar todos os artefatos da sessão
-- `[VERSIONAR]` → Analisar mudanças e sugerir novas versões SemVer
-
-## TAGS E TÍTULOS
-
-Formato: `(Tag)(YYYYMMDD-HHMM)-Descrição concisa (máx 8 palavras)`
-
-Tags de projetos conhecidos:
+Formato: `(Tag)(YYYYMMDD-HHMM)-Descrição concisa`
+Tags conhecidas:
 {tag_list}
 - {name} -> ({tag})
 
-Para POCs/spikes: `(Home/Spike)` ou `(Home/POC)`
-Para cross-project: use tag do projeto principal (>70% do conteúdo)
+## DIRETRIZES
 
-## DIRETRIZES DE QUALIDADE
-
-- Cabeçalho versionado em todo artefato
-- Configurações sensíveis via variáveis de ambiente (nunca hardcoded)
-- Ao final de cada sessão, sugerir: "Deseja que eu execute [RESUMO]?"
-"""
-
-
-def gen_metaprompt_resumo():
-    return f"""# File: metaprompt-resumo.md
-# Version: v1.0.0
-# Created: {_iso()}
-# Purpose: Metaprompt para resumir sessão de trabalho
-# Gatilho: Usuário digita [RESUMO]
-
-# METAPROMPT: RESUMO DE SESSÃO
-
-Gatilho: `[RESUMO]`
-
-## INSTRUÇÕES
-
-Leia toda a conversa atual. Pense ordenadamente, um passo de cada vez.
-Produza um resumo detalhado que permita retomar o trabalho em outra sessão
-com todo o contexto necessário, sem redundâncias, com artefatos versionados.
-
-O resumo NÃO pode ser raso. Ele precisa ser suficiente para recomeçar
-em outra sessão sem perda de informação.
-
----
-
-### PASSO 1: CONTEXTO DA SESSÃO
-- Qual foi a primeira solicitação/objetivo desta sessão?
-- Qual era o estado do projeto antes de começar?
-- Qual foi o planejamento proposto?
-
-### PASSO 2: PROGRESSO REALIZADO
-- O que foi implementado (código, configurações, testes)
-- Comandos executados e outputs relevantes
-- Decisões tomadas e suas justificativas
-- O que foi refeito/corrigido (com motivo da correção)
-
-### PASSO 3: ESTADO ATUAL
-- O que está funcionando agora
-- O que NÃO está funcionando
-- Configurações ativas (URLs, portas, paths, parâmetros)
-- Bloqueios ou dependências externas
-
-### PASSO 4: DORES E PROBLEMAS PENDENTES
-Liste problemas não resolvidos, dúvidas técnicas, riscos identificados.
-
-### PASSO 5: VERSIONAMENTO DE ARTEFATOS
-Para CADA artefato mencionado ou criado nesta sessão:
-1. Verifique se já existe versão anterior
-2. Se sim: incremente (PATCH/MENOR/MAIOR conforme SemVer)
-3. Se não: inicie em v1.0.0
-4. Nome: `nome.vX.Y.Z.YYYYMMDD-HHMM.ext`
-5. Adicione cabeçalho com metadados (se formato suportar)
-6. Inclua o conteúdo COMPLETO do artefato
-7. Valide sintaxe e boas práticas
-
-### PASSO 6: PRÓXIMOS PASSOS
-Numere por prioridade (máximo 5).
-
-### PASSO 7: TÍTULO DA CONVERSA
-1. Extraia 3-5 palavras-chave
-2. Escolha tag baseada nos projetos existentes (ver Instruções)
-3. Formato: `(Tag)(YYYYMMDD-HHMM)-Descrição concisa`
-
-### PASSO 8: PREPARAÇÃO PARA PRÓXIMA SESSÃO
-Sugira: "Continuar do resumo [nome]. Estado: [1 frase]. Próxima tarefa: [passo 1]."
-
----
-
-## FORMATO DE SAÍDA
-1. Resumo consolidado (Passos 1-6)
-2. Artefatos versionados (blocos de código separados)
-3. Título sugerido (uma linha)
-4. Prompt para próxima sessão (uma linha)
-
-Salvar como: `resumo-sessao-YYYYMMDD-HHMM.v1.0.0.md`
-
-## CHECKLIST FINAL
-- [ ] Todas as informações capturadas?
-- [ ] Sem redundância?
-- [ ] Artefatos com versão e cabeçalho?
-- [ ] Próximos passos acionáveis?
-- [ ] Prompt de continuação suficiente?
-"""
-
-
-def gen_metaprompt_retomar():
-    return f"""# File: metaprompt-retomar.md
-# Version: v1.0.0
-# Created: {_iso()}
-# Purpose: Metaprompt para retomar sessão anterior
-# Gatilho: Usuário digita [RETOMAR]
-
-# METAPROMPT: RETOMAR SESSÃO
-
-Gatilho: `[RETOMAR]`
-
-## INSTRUÇÕES
-
-### PASSO 1: LOCALIZAR CONTEXTO
-Procure nos Arquivos do projeto:
-- Resumo mais recente (`resumo-sessao-*.md`)
-- Artefatos versionados relevantes
-- CHANGELOG.md (se existir)
-Se o usuário anexou um arquivo de resumo, use esse.
-
-### PASSO 2: RECONSTRUIR ESTADO
-- Onde paramos (última ação/decisão)
-- O que está funcionando / não funcionando
-- Configurações ativas
-- Artefatos disponíveis (nome, versão, descrição)
-- Próximos passos pendentes
-
-### PASSO 3: VALIDAÇÃO
-"Esse é o estado correto? Mudou algo?
-Começar pelo próximo passo [N] ou outra prioridade?"
-
-### PASSO 4: RETOMAR
-Após confirmação: carregue artefato e execute.
-
----
-
-## CASO: NENHUM RESUMO ENCONTRADO
-"Não encontrei resumo anterior. Tem arquivo para anexar
-ou prefere descrever onde paramos?"
-
-## CASO: MÚLTIPLOS RESUMOS
-Liste com datas e pergunte qual usar.
-"""
-
-
-def gen_metaprompt_iniciar():
-    return f"""# File: metaprompt-iniciar.md
-# Version: v1.0.0
-# Created: {_iso()}
-# Purpose: Metaprompt para iniciar nova sessão
-# Gatilho: Usuário digita [INICIAR]
-
-# METAPROMPT: INICIAR SESSÃO
-
-Gatilho: `[INICIAR]`
-
-## INSTRUÇÕES
-
-### PASSO 1: INVENTÁRIO DO PROJETO
-1. Resumo mais recente (`resumo-sessao-*.md`): existe? data?
-2. Artefatos existentes: quais, em que versão?
-3. CHANGELOG.md: existe?
-4. Instruções: contexto/escopo definido?
-
-### PASSO 2: BRIEFING INICIAL
-- Projeto: [Nome]
-- Objetivo: [das Instruções]
-- Última sessão: [data e 1 frase, ou "primeira sessão"]
-- Artefatos disponíveis
-- Pendências do resumo anterior
-
-### PASSO 3: DEFINIR OBJETIVO
-"O que quer abordar nesta sessão?"
-Sugira opções baseadas nas pendências.
-
-### PASSO 4: PLANO DE SESSÃO
-1. Quebre em etapas (máx. 5)
-2. Identifique artefatos a modificar
-3. Comece a executar
-
----
-
-## CASO: PRIMEIRO USO
-Confirme escopo, proponha estrutura, comece pelo fundamental.
-
-## CASO: MUITAS SESSÕES
-Use apenas o resumo mais recente.
-"""
-
-
-def gen_metaprompt_checkpoint():
-    return f"""# File: metaprompt-checkpoint.md
-# Version: v1.0.0
-# Created: {_iso()}
-# Purpose: Metaprompt para checkpoint consolidado do projeto
-# Gatilho: Usuário digita [CHECKPOINT]
-
-# METAPROMPT: CHECKPOINT DO PROJETO
-
-Gatilho: `[CHECKPOINT]`
-
-## OBJETIVO
-
-Produzir um snapshot consolidado do PROJETO INTEIRO — não de uma sessão.
-Diferença fundamental:
-- `[RESUMO]` → foto de UMA sessão
-- `[CHECKPOINT]` → foto do PROJETO (estado da arte acumulado)
-
-O checkpoint permite:
-1. Limpar/arquivar conversas antigas sem perder contexto
-2. Consolidar informação fragmentada em múltiplas sessões
-3. Eliminar redundâncias e decisões obsoletas
-4. Criar ponto de restart limpo para o projeto
-
----
-
-## INSTRUÇÕES
-
-Pense ordenadamente. Leia TODAS as fontes disponíveis antes de produzir o checkpoint.
-
-### PASSO 1: VARREDURA COMPLETA
-
-Consulte todas as fontes de contexto do projeto:
-1. **Instruções do projeto** — escopo, papel, stack, convenções
-2. **Arquivos no Knowledge** — resumos anteriores, artefatos, docs
-3. **Conversas recentes** — use busca para encontrar decisões e contexto
-4. **Memórias do projeto** — informações acumuladas automaticamente
-
-### PASSO 2: INVENTÁRIO DE ARTEFATOS
-
-Para CADA artefato que ainda é relevante:
-1. Nome e versão mais recente
-2. Onde está (Knowledge, conversa, repositório externo)
-3. Status: ativo | deprecado | substituído
-4. Se deprecado/substituído: indicar pelo quê
-
-Produzir tabela:
-```
-| Artefato | Versão | Status | Localização | Notas |
-```
-
-### PASSO 3: DECISÕES VIGENTES
-
-Listar decisões arquiteturais e técnicas que AINDA valem:
-- O que foi decidido
-- Justificativa (1 frase)
-- Quando (conversa/data aproximada)
-
-Excluir: decisões revertidas, experimentos abandonados, tentativas que falharam.
-Se uma decisão foi substituída, registrar apenas a versão atual.
-
-### PASSO 4: ESTADO ATUAL DO PROJETO
-
-- O que está funcionando (features, integrações, deploys)
-- O que NÃO está funcionando (bugs conhecidos, limitações)
-- Configurações ativas (URLs, parâmetros, versões)
-- Dependências externas e seus estados
-
-### PASSO 5: PROBLEMAS E DÍVIDA TÉCNICA
-
-- Bugs conhecidos não resolvidos
-- Dívida técnica acumulada
-- Riscos identificados
-- Perguntas em aberto
-
-### PASSO 6: PRÓXIMOS PASSOS
-
-Numere por prioridade (máximo 7).
-Separe em:
-- **Imediato** (próxima sessão)
-- **Curto prazo** (próximas 3-5 sessões)
-- **Backlog** (quando houver tempo)
-
----
-
-## FORMATO DE SAÍDA
-
-Produzir UM arquivo consolidado:
-
-```markdown
-# CHECKPOINT: [Nome do Projeto]
-# Data: YYYY-MM-DD HH:MM
-# Cobre: [data início] até [data fim]
-# Conversas consolidadas: [quantidade]
-
-## 1. VISÃO GERAL
-[Estado do projeto em 3-5 frases]
-
-## 2. ARTEFATOS VIGENTES
-[Tabela do Passo 2 — apenas ativos]
-
-## 3. DECISÕES VIGENTES
-[Lista do Passo 3]
-
-## 4. ESTADO ATUAL
-[Passo 4]
-
-## 5. PROBLEMAS E DÍVIDA TÉCNICA
-[Passo 5]
-
-## 6. PRÓXIMOS PASSOS
-[Passo 6]
-
-## 7. CONTEXTO PARA CONTINUAÇÃO
-[Tudo que a próxima sessão precisa saber pra começar sem perguntar]
-```
-
-Salvar como: `checkpoint-YYYYMMDD-HHMM.v1.0.0.md`
-
-## PÓS-CHECKPOINT
-
-Após gerar o checkpoint, sugerir:
-1. "Faça upload do checkpoint nos Arquivos do projeto"
-2. "Remova resumos antigos que foram consolidados"
-3. "Conversas anteriores ao checkpoint podem ser arquivadas/deletadas"
-4. "Próxima sessão: use [INICIAR] — o checkpoint será detectado automaticamente"
-
-## CHECKLIST FINAL
-- [ ] Todas as fontes foram consultadas?
-- [ ] Nenhum artefato ativo foi omitido?
-- [ ] Decisões obsoletas foram excluídas (não apenas marcadas)?
-- [ ] O checkpoint é autossuficiente (não depende de conversas anteriores)?
-- [ ] Próximos passos são acionáveis?
+- Credenciais via env vars ou secret managers, nunca hardcoded
+- Ao final de cada sessão, sugerir `[RESUMO]`
 """
 
 
@@ -532,23 +218,16 @@ Gerado por `claude-project-init` v{VERSION} em {_iso()}.
 - Campo "Instruções" → colar conteúdo de `INSTRUCOES.md`
 - ⚠️ EDITE a seção "CONTEXTO" com detalhes do seu projeto
 
-### 3. Upload de Arquivos (Project Knowledge)
-Arrastar para "Arquivos" do projeto:
-1. `metaprompt-resumo.md`
-2. `metaprompt-retomar.md`
-3. `metaprompt-iniciar.md`
-4. `metaprompt-checkpoint.md`
-
-### 4. Primeira Conversa
+### 3. Primeira Conversa
 - Nova conversa no projeto → `[INICIAR]`
 
-### 5. Ao Finalizar
+### 4. Ao Finalizar
 - `[RESUMO]` → upload do resumo nos Arquivos → renomear conversa
 
 ## COMANDOS
 
-| Comando       | Função                                  |
-|---------------|-----------------------------------------|
+| Comando         | Função                                  |
+|-----------------|-----------------------------------------|
 | `[RESUMO]`      | Resumo completo da sessão               |
 | `[RETOMAR]`     | Reconstroi contexto anterior            |
 | `[INICIAR]`     | Briefing e definição de objetivo        |
@@ -559,6 +238,10 @@ Arrastar para "Arquivos" do projeto:
 
 ## TÍTULOS
 Formato: `({tag})({ts})-Descrição concisa`
+
+## NOTA v2.0.0
+Comandos de sessão agora são inline no INSTRUCOES.md.
+Não é mais necessário fazer upload de metaprompts no Knowledge.
 """
 
 
@@ -573,20 +256,25 @@ Gerado em {_iso()}.
 - [ ] Listar Arquivos atuais
 - [ ] Identificar artefatos nas conversas
 
-## LIMPEZA
+## LIMPEZA v2.0.0
+- [ ] Remover metaprompts antigos do Knowledge:
+  - [ ] metaprompt-resumo.md
+  - [ ] metaprompt-retomar.md
+  - [ ] metaprompt-iniciar.md
+  - [ ] metaprompt-checkpoint.md
 - [ ] Remover arquivos obsoletos/duplicados
 - [ ] Mover conversas de outro projeto
 - [ ] Trazer conversas avulsas
 - [ ] Renomear projeto (Categoria/Nome)
 
-## APLICAR TEMPLATE
+## APLICAR TEMPLATE v2
 - [ ] Editar `INSTRUCOES.md` com contexto real
-- [ ] Colar em "Instruções"
-- [ ] Upload metaprompts:
-  - [ ] metaprompt-resumo.md
-  - [ ] metaprompt-retomar.md
-  - [ ] metaprompt-iniciar.md
-  - [ ] metaprompt-checkpoint.md
+- [ ] Colar em "Instruções" (comandos já estão inline)
+- [ ] NÃO fazer upload de metaprompts (eliminados na v2)
+
+## REVISAR MEMÓRIAS
+- [ ] Verificar memórias globais em escopo deste projeto
+- [ ] Mover para instruções do projeto ou remover
 
 ## VERSIONAR ARTEFATOS
 - [ ] Sem versão → v1.0.0
@@ -609,10 +297,6 @@ def generate_file(filepath, template, name="", tag="", role="", stack=""):
     generators = {
         "description": lambda: gen_description(name, role, stack),
         "instructions": lambda: gen_instructions(name, tag, role, stack),
-        "metaprompt_resumo": gen_metaprompt_resumo,
-        "metaprompt_retomar": gen_metaprompt_retomar,
-        "metaprompt_iniciar": gen_metaprompt_iniciar,
-        "metaprompt_checkpoint": gen_metaprompt_checkpoint,
         "readme": lambda: gen_readme(name, tag),
         "migration": lambda: gen_migration_checklist(name, tag),
     }
@@ -648,7 +332,7 @@ def main():
     elif cmd == "registry_names":
         registry_names()
     elif cmd == "generate":
-        # generate <filepath> <template> <name> <tag> [role] [stack]
+        # generate <filepath> <template> <n> <tag> [role] [stack]
         filepath = sys.argv[2]
         template = sys.argv[3]
         name = sys.argv[4] if len(sys.argv) > 4 else ""

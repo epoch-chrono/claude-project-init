@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-02-10
+
+### Changed
+- **BREAKING**: Removed separate metaprompt files (metaprompt-resumo.md, metaprompt-retomar.md, metaprompt-iniciar.md, metaprompt-checkpoint.md)
+- All session commands ([RESUMO], [RETOMAR], [INICIAR], [CHECKPOINT], [TAG], [ARTEFATOS], [VERSIONAR]) are now inline in INSTRUCOES.md
+- Project scaffold reduced from 7 files to 3 files (README.md, DESCRICAO.txt, INSTRUCOES.md)
+- Context overhead per project reduced by ~82% (~5,000 → ~900 tokens)
+- [CHECKPOINT] now includes memory export step: lists project-scoped memory edits, exports as artifacts, suggests cleanup of global memories
+
+### Removed
+- `gen_metaprompt_resumo()`, `gen_metaprompt_retomar()`, `gen_metaprompt_iniciar()`, `gen_metaprompt_checkpoint()` from engine
+- Metaprompt file generation from both `create` and `migrate` flows
+- Upload instructions for metaprompt files in README template and CLI output
+
+### Migration
+- Run `claude-project-init --migrate "Category/Name"` for guided checklist
+- Remove 4 metaprompt files from Project Knowledge in Claude UI
+- Replace INSTRUCOES.md with new inline version — no functionality lost
+
 ## [1.4.1] - 2025-02-07
 
 ### Fixed

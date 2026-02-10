@@ -27,6 +27,8 @@ test: lint ## Run smoke tests
 	@echo "── --migrate"
 	@fish bin/claude-project-init --migrate "Test/Migrate" --output /tmp/cpi-make-test > /dev/null
 	@test -f /tmp/cpi-make-test/Test-Migrate/MIGRACAO-CHECKLIST.md && echo "✔ Migration generated"
+	@echo "── verify no metaprompts generated"
+	@test ! -f /tmp/cpi-make-test/Test-Make/metaprompt-resumo.md && echo "✔ No metaprompt files (v2)"
 	@echo "── cross-reference"
 	@fish bin/claude-project-init "Test/XRef" --role "t" --stack "t" --output /tmp/cpi-make-test > /dev/null
 	@grep -q "Test/Import" /tmp/cpi-make-test/Test-XRef/INSTRUCOES.md && echo "✔ Cross-ref OK"
